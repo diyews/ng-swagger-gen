@@ -9,10 +9,13 @@ const Mustache = require('mustache');
 const $RefParser = require('json-schema-ref-parser');
 var npmConfig = require('npm-conf');
 
+var globalOptions;
+
 /**
  * Main generate function
  */
 function ngSwaggerGen(options) {
+  globalOptions = options;
   if (typeof options.swagger != 'string') {
     console.error("Swagger file not specified in the 'swagger' option");
     process.exit(1);
@@ -169,8 +172,9 @@ function doGenerate(swagger, options) {
     });
 
   // Prepare the output folder
-  const modelsOutput = path.join(output, 'models');
-  const servicesOutput = path.join(output, 'services');
+  const msDirPrefix = ''; // options.msPrefix ? options.msPrefix.toLocaleLowerCase() + '-' : '';
+  const modelsOutput = path.join(output, msDirPrefix + 'models');
+  const servicesOutput = path.join(output, msDirPrefix + 'services');
   mkdirs(modelsOutput);
   mkdirs(servicesOutput);
 
@@ -383,7 +387,7 @@ function applyTagFilter(models, services, options) {
     }
   }
   // Filter out the unused models
-  var ignoreUnusedModels = options.ignoreUnusedModels !== false;
+  var ignoreUnusedModels = options.ignoreUnusedModels === true;
   var usedModels = new Set();
   const addToUsed = (dep) => usedModels.add(dep);
   for (var serviceName in services) {
@@ -526,7 +530,7 @@ function simpleRef(ref) {
   if (index >= 0) {
     ref = ref.substr(index + 1);
   }
-  return toClassName(ref);
+  return toClassName(globalOptions.msPrefix + formatModelName(ref));
 }
 
 /**
@@ -610,6 +614,14 @@ DependenciesResolver.prototype.get = function () {
   return this.dependencies;
 };
 
+function formatModelName(name) {
+    const arr = name
+      .split('`')[0]
+      .split('%60')[0]  // same as upon
+      .split('.');
+    return arr[arr.length - 1];
+}
+
 /**
  * Process each model, returning an object keyed by model name, whose values
  * are simplified descriptors for models.
@@ -618,7 +630,9 @@ function processModels(swagger, options) {
   var name, model, i, property;
   var models = {};
   for (name in swagger.definitions) {
-    model = swagger.definitions[name];
+    var originName = name;
+    name = options.msPrefix + formatModelName(name);
+    model = swagger.definitions[originName];
     var parents = null;
     var properties = null;
     var requiredProperties = null;
@@ -1152,9 +1166,10 @@ function processServices(swagger, models, options) {
       var descriptor = services[tag];
       if (descriptor == null) {
         var serviceClass = toClassName(tag);
+        var serviceClassName = toClassName(options.msPrefix + tag);
         descriptor = {
           serviceName: tag,
-          serviceClass: serviceClass + 'Service',
+          serviceClass: serviceClassName + 'Service',
           serviceFile: toFileName(serviceClass) + options.customFileSuffix.service,
           operationIds: new Set(),
           serviceOperations: [],
@@ -1286,8 +1301,26 @@ function processServices(swagger, models, options) {
         if (options.camelCase) return string.charAt(0).toLowerCase() + string.slice(1);
         else return string;
       }
+      function getOperationNameByUrl(url, method) {
+        let u = url
+          .replace(new RegExp(`^\/?${tag}(?=\/|$)`, 'i'), '') // remove tag prefix
+          .replace(/[^\w]+(\w)/g, function(v, $1) { return $1.toUpperCase(); }) // remove non-word
+          .replace(/[^\w]$/g, '') // remove trailing slash
+          .replace(/(?:^\w|[A-Z]|\b\w)/g, function(word, index) {
+            return index === 0 ? word.toLowerCase() : word.toUpperCase();
+          })  // to camelcase
+          .replace(/\s+/g, ''); // remove space
+
+        const methods = Object.keys(path).filter(o => o !== 'parameters');
+        if (methods.length > 1) {
+          u += method;
+        }
+
+        return u;
+      }
+
       var operation = {
-        operationName: getOperationName(id),
+        operationName: !options.preferUrl ? getOperationName(id) : getOperationNameByUrl(url, method.toLocaleUpperCase()),
         operationParamsClass: paramsClass,
         operationParamsClassComments: paramsClassComments,
         operationMethod: method.toLocaleUpperCase(),
@@ -1295,7 +1328,7 @@ function processServices(swagger, models, options) {
         operationPathExpression:
           toPathExpression(operationParameters, paramsClass, url),
         operationResultType: resultType,
-        operationHttpResponseType: '__StrictHttpResponse<' + resultType + '>',
+        operationHttpResponseType: 'StrictHttpResponse<' + resultType + '>',
         operationComments: toComments(docString, 1),
         operationParameters: operationParameters,
         operationResponses: operationResponses,

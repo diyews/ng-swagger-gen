@@ -224,6 +224,7 @@ The supported properties in the JSON file are:
 - `prefix`: A prefix to the generated global classes, such as `Configuration`
   and `Module`. Defaults to 'Api', so the default generated files are
   `ApiConfiguration` and `ApiModule`.
+- `msPrefix`: A prefix to models and service. eg: `SampleModel` -> `XXXSampleModel`
 - `includeTags`: When specified, filters the generated services, including only
   those corresponding to this list of tags.
 - `excludeTags`: When specified, filters the generated services, excluding any
@@ -260,6 +261,7 @@ The supported properties in the JSON file are:
 - `timeout`: Set the amount of time (in milliseconds) to wait for a response
 from the server when downloading files. Default to 20 seconds.
 - `skipProxySetup`: Skip the proxy setup when unable to generate from localhost.
+- `preferUrl`: Whether use the url styled method name. Default to use id.
 
 ### Configuration file example
 The following is an example of a configuration file which will choose a few
@@ -460,7 +462,7 @@ equivalents) to use an array of models.
 ## Who uses this project
 This project was developed by the [Cyclos](http://cyclos.org) development team,
 and, in fact, the [Cyclos REST API](https://demo.cyclos.org/api) is the primary
-test case for generated classes. However, since Cyclos 4.12, the project has 
+test case for generated classes. However, since Cyclos 4.12, the project has
 changed the API descriptor to OpenAPI 3. As such, a new generator was developed:
 [ng-openapi-gen](https://github.com/cyclosproject/ng-openapi-gen).
 

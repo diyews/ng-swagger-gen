@@ -184,5 +184,8 @@ function run(options) {
   if (options.skipProxySetup == null) {
     options.skipProxySetup = schema.properties.skipProxySetup.default;
   }
+  if (options.msPrefix == null) {
+    options.msPrefix = '';
+  }
   ngSwaggerGen(options);
 }

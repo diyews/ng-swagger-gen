@@ -1,3 +1,6 @@
 node_modules
 .vscode
+.idea
 ng-swagger-gen.json
+src
+.*.swagger.json
